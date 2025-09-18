@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ContactForm from "./ContactForm";
  
 function Card({ children }) {
   return (
@@ -38,28 +39,64 @@ function Textarea(props) {
 }
  
 export default function App() {
-  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
  
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+
+  const [formData, setFormData] = useState({
+      name: "",
+      email: "",
+      message: "",
+    });
+  
+    const [errors, setErrors] = useState({});
+    const [success, setSuccess] = useState(false);
+  
+
+    const validate = () => {
+      const newErrors = {};
+  
+      if (!formData.name.trim()) {
+        newErrors.name = "Imię i nazwisko są wymagane";
+      }
+  
+      if (!formData.email.trim()) {
+        newErrors.email = "Email jest wymagany";
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = "Podaj poprawny adres email";
+      }
+  
+      if (!formData.message.trim()) {
+        newErrors.message = "Wiadomość jest wymagana";
+      }
+  
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    };
+  
  
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("http://localhost:5000/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
- 
-      if (response.ok) {
-        setSubmitted(true);
+      e.preventDefault();
+      if (!validate()) return;
+    
+      try {
+        const res = await fetch("http://localhost:5000/api/contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+    
+        const data = await res.json();
+        console.log("Odpowiedź serwera:", data);
+    
+        setSuccess(true);
         setFormData({ name: "", email: "", message: "" });
+        setErrors({});
+      } catch (error) {
+        console.error("Błąd podczas wysyłania formularza:", error);
       }
-    } catch (error) {
-      console.error("Błąd przy wysyłaniu formularza:", error);
-    }
-  };
+    };
  
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
@@ -118,11 +155,11 @@ export default function App() {
             Dziękujemy za wiadomość! Skontaktujemy się z Tobą wkrótce.
           </p>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6 bg-white p-10 rounded-3xl shadow-lg">
+          <form onSubmit={handleSubmit} className="space-y-6  p-10 rounded-3xl shadow-lg">
             <Input type="text" name="name" placeholder="Imię i nazwisko" value={formData.name} onChange={handleChange} required />
             <Input type="email" name="email" placeholder="Adres email" value={formData.email} onChange={handleChange} required />
             <Textarea name="message" placeholder="Treść wiadomości" value={formData.message} onChange={handleChange} required />
-            <Button type="submit" className="w-full">Wyślij</Button>
+            <Button type="submit" className="w-full mx-auto bg-red">Wyślij</Button>
           </form>
         )}
       </section>

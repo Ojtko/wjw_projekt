@@ -12,7 +12,7 @@ function Button({ children, className = "", ...props }) {
   return (
     <button
       {...props}
-      className={`px-6 py-3 rounded-full bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors duration-300 ${className}`}
+      className={`px-6 py-3 rounded-full bg-red-700 text-black font-semibold hover:bg-red-800 transition-colors duration-300 ${className}`}
     >
       {children}
     </button>
@@ -80,7 +80,7 @@ export default function App() {
   };
  
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans w-[100vw]">
       {/* Navbar */}
       <header className="bg-white shadow-md p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-0 z-50">
         <h1 className="text-xl sm:text-2xl font-bold text-red-700">WJW Projekt</h1>
@@ -103,7 +103,7 @@ export default function App() {
       {/* Hero */}
       <section
         id="home"
-        className="bg-red-700 text-center py-20 sm:py-32 px-4 w-full relative overflow-hidden"
+        className="bg-red-700 text-center py-20 sm:py-32 px-4 relative overflow-hidden"
       >
         <h2 className="text-3xl sm:text-5xl md:text-6xl text-white font-extrabold leading-tight max-w-3xl mx-auto">
           Ekspertyzy przeciwpożarowe dla Twojej inwestycji
@@ -111,20 +111,20 @@ export default function App() {
         <p className="mt-6 text-base sm:text-lg md:text-xl max-w-2xl mx-auto text-white">
           Profesjonalne opracowania i doradztwo z zakresu bezpieczeństwa pożarowego.
         </p>
-        <Button className="mt-10 sm:mt-16">Skontaktuj się</Button>
+        <Button className="mt-10 sm:mt-16 text-black">Skontaktuj się</Button>
       </section>
  
       {/* About */}
-<section id="about" className="py-20 px-6 w-full text-center">
+<section id="about" className="py-20 px-6  text-center">
   <h3 className="text-4xl font-bold mb-6 text-gray-800">O nas</h3>
   <p className="text-lg text-gray-600 max-w-3xl mx-auto">
     WJW Projekt to firma specjalizująca się w opracowywaniu ekspertyz przeciwpożarowych, dokumentacji technicznych oraz doradztwie w zakresie bezpieczeństwa pożarowego.
   </p>
 </section>
  
-<section id="services" className="bg-gray-100 py-20 px-6 w-full">
+<section id="services" className="bg-gray-100 py-20 px-6">
   <h3 className="text-4xl font-bold mb-12 text-center text-gray-800">Nasze Usługi</h3>
-  <div className="grid gap-8 md:grid-cols-3 w-full">
+  <div className="grid gap-8 md:grid-cols-3 ">
           {[
             {
               title: "Ekspertyzy przeciwpożarowe",
@@ -199,7 +199,7 @@ export default function App() {
       </section>
  
       {/* Footer */}
-      <footer className="bg-red-700 text-white text-center py-6 sm:py-8 mt-12 sm:mt-20 px-4 w-full">
+      <footer className="bg-red-700 text-white text-center py-6 sm:py-8 mt-12 sm:mt-20 px-4">
         <p className="text-sm sm:text-base">
           &copy; {new Date().getFullYear()} WJW Projekt. Wszystkie prawa zastrzeżone.
         </p>

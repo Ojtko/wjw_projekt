@@ -39,7 +39,7 @@ function Textarea(props) {
  
 export default function App() {
   const [submitted, setSubmitted] = useState(false);
-  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", adres: "", message: "" });
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
  
@@ -53,6 +53,9 @@ export default function App() {
       newErrors.email = "Email jest wymagany";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Podaj poprawny adres email";
+    }
+    if (!formData.adres.trim()) {
+      newErrors.adres = "Adres jest wymagany";
     }
     if (!formData.message.trim()) newErrors.message = "Wiadomość jest wymagana";
     setErrors(newErrors);
@@ -71,7 +74,7 @@ export default function App() {
       const data = await res.json();
       console.log("Odpowiedź serwera:", data);
       setSuccess(true);
-      setFormData({ name: "", email: "", message: "" });
+      setFormData({ name: "", email: "", adres: "", message: "" });
       setErrors({});
       setSubmitted(true);
     } catch (error) {
@@ -181,7 +184,15 @@ export default function App() {
               required
             />
             {errors.email && <p className="text-red-600 text-sm">{errors.email}</p>}
- 
+            <Input
+              type="text"
+              name="adres"
+              placeholder="Adres (ulica, miasto)"
+              value={formData.adres}
+              onChange={handleChange}
+              required
+            />
+            {errors.adres && <p className="text-red-600 text-sm">{errors.adres}</p>}
             <Textarea
               name="message"
               placeholder="Treść wiadomości"

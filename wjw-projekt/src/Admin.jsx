@@ -24,7 +24,10 @@ export default function Admin() {
       setError("Błąd połączenia z serwerem");
     }
   };
-
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setLoggedIn(false);
+  };
   useEffect(() => {
     if (loggedIn) {
       const token = localStorage.getItem("token");
@@ -91,11 +94,19 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 w-[100vw]">
-      <h1 className="text-3xl font-bold text-red-700 mb-8 text-center">
-        Panel Administratora
-      </h1>
 
-      {/* WIADOMOŚCI */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-red-700">
+          Panel Administratora
+        </h1>
+        <button
+          onClick={handleLogout}
+          className="bg-red-700 text-black px-4 py-2 rounded-lg hover:bg-red-800 transition"
+        >
+          Wyloguj
+        </button>
+      </div>
+
       <section className="mb-10">
         <h2 className="text-2xl font-semibold mb-4">Wiadomości</h2>
         <div className="bg-white shadow-md rounded-xl p-6 overflow-x-auto">
@@ -124,7 +135,7 @@ export default function Admin() {
         </div>
       </section>
 
-      {/* EKSPERTYZY */}
+
       <section>
         <h2 className="text-2xl font-semibold mb-4">Ekspertyzy</h2>
         <div className="bg-white shadow-md rounded-xl p-6 overflow-x-auto">

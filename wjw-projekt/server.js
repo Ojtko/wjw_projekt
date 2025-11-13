@@ -30,15 +30,41 @@ app.post("/api/login", (req, res) => {
 
 
 app.post("/api/contact", async (req, res) => {
-  const { name, email, adres,  message } = req.body;
+  const { name, email, adres, message } = req.body;
+
+  if (!name || !email || !adres || !message) {
+    return res.status(400).json({ success: false, message: "Brak wymaganych pól" });
+  }
   try {
-    await db.execute(
+    const [rows] = await db.query("SELECT * FROM klients WHERE imie = ?", [name]);
+
+    let klientId;
+
+    if (rows.length === 0) {
+      const [klientResult] = await db.execute(
+        "INSERT INTO klients (imie, mail) VALUES (?, ?)",
+        [name, email]
+      );
+      klientId = klientResult.insertId;
+      console.log("Dodano nowego klienta:", klientId);
+    } else {
+      klientId = rows[0].id;
+      console.log("Znaleziono istniejącego klienta:", klientId);
+    }
+    const [msgResult] = await db.execute(
       "INSERT INTO messages (imie, mail, adres, wiadomosc) VALUES (?, ?, ?, ?)",
       [name, email, adres, message]
     );
+
+    const messageId = msgResult.insertId;
+    await db.execute(
+      "INSERT INTO ekspertyzy (message_id, klients_id, wycena, status) VALUES (?, ?, 0, 'oczekuje')",
+      [messageId, klientId]
+    );
+
     res.json({ success: true, message: "Wiadomość zapisana w bazie" });
   } catch (err) {
-    console.error(err);
+    console.error("Błąd zapisu:", err);
     res.status(500).json({ success: false, message: "Błąd bazy danych" });
   }
 });
@@ -97,6 +123,5 @@ app.put("/api/ekspertyzy/:id", async (req, res) => {
   }
 });
 
-// 🚀 Start serwera
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Serwer działa na porcie ${PORT}`));
+app.listen(PORT, () => console.log(`Serwer działa na porcie ${PORT}`));

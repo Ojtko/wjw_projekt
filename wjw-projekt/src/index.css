@@ -48,7 +48,7 @@ button {
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #EF4444;
 }
 button:focus,
 button:focus-visible {
@@ -64,6 +64,18 @@ button:focus-visible {
     color: #747bff;
   }
   button {
-    background-color: #f9f9f9;
+    background-color: #ededed;
+  }
+}
+@layer base {
+  :root {
+    color: inherit;
+    background-color: inherit;
+  }
+  a:hover {
+    color: inherit;
+  }
+  button {
+    background-color: inherit;
   }
 }

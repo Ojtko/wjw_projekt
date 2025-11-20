@@ -91,7 +91,7 @@ app.get("/api/ekspertyzy", async (req, res) => {
 
   try {
     const [rows] = await db.query(`
-      SELECT e.id, m.imie, m.mail, m.adres, e.wycena, e.status, m.wiadomosc, m.data_wyslania
+      SELECT e.id, m.imie, m.mail, m.adres, e.wycena, e.status, e.termin, m.wiadomosc, m.data_wyslania
       FROM ekspertyzy e
       JOIN messages m ON e.message_id = m.id
       ORDER BY e.id DESC
@@ -110,12 +110,12 @@ app.put("/api/ekspertyzy/:id", async (req, res) => {
     return res.status(403).json({ success: false, message: "Brak dostępu" });
 
   const { id } = req.params;
-  const { status, wycena } = req.body;
+  const { status, wycena, termin} = req.body;
 
   try {
     await db.execute(
-      "UPDATE ekspertyzy SET status = ?, wycena = ? WHERE id = ?",
-      [status, wycena, id]
+      "UPDATE ekspertyzy SET status = ?, wycena = ?, termin = ? WHERE id = ?",
+      [status, wycena, termin, id]
     );
     res.json({ success: true, message: "Ekspertyza zaktualizowana" });
   } catch (err) {

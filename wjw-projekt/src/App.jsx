@@ -42,6 +42,9 @@ export default function App() {
   const [formData, setFormData] = useState({ name: "", email: "", adres: "", message: "" });
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
+  const images = Object.values(
+    import.meta.glob("./assets/about/*.jpg", { eager: true })
+  ).map(img => img.default);
  
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -83,7 +86,7 @@ export default function App() {
   };
  
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans w-[100vw]">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans w-[99.2vw]">
       {/* Navbar */}
       <header className="bg-white shadow-md p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-0 z-50">
         <h1 className="text-xl sm:text-2xl font-bold text-red-700">WJW Projekt</h1>
@@ -112,18 +115,48 @@ export default function App() {
           Ekspertyzy przeciwpożarowe dla Twojej inwestycji
         </h2>
         <p className="mt-6 text-base sm:text-lg md:text-xl max-w-2xl mx-auto text-white">
-          Profesjonalne opracowania i doradztwo z zakresu bezpieczeństwa pożarowego.
+        Oferujemy profesjonalne opracowania i doradztwo w zakresie bezpieczeństwa pożarowego, dostosowane do wymagań prawnych i technicznych, aby Twoja inwestycja była w pełni bezpieczna.
         </p>
-        <Button className="mt-10 sm:mt-16 text-black">Skontaktuj się</Button>
       </section>
  
-      {/* About */}
-<section id="about" className="py-20 px-6  text-center">
-  <h3 className="text-4xl font-bold mb-6 text-gray-800">O nas</h3>
-  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-    WJW Projekt to firma specjalizująca się w opracowywaniu ekspertyz przeciwpożarowych, dokumentacji technicznych oraz doradztwie w zakresie bezpieczeństwa pożarowego.
-  </p>
+     {/* About */}
+<section id="about" className="relative w-full overflow-hidden py-20 bg-black text-white">
+  
+  <div className="absolute inset-0 overflow-hidden">
+    <div className="flex w-[200%] carousel-track">
+      {[
+        '/public/ppoz1.jpg',
+        '/public/ppoz2.jpg',
+        '/public/ppoz3.jpg',
+        '/public/ppoz4.jpg',
+        '/public/ppoz5.jpg',
+        '/public/ppoz1.jpg', 
+        '/public/ppoz2.jpg',
+        '/public/ppoz3.jpg',
+        '/public/ppoz4.jpg',
+        '/public/ppoz5.jpg'
+        
+      ].map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt=""
+          className="w-1/4 h-[300px] object-cover opacity-40"
+        />
+      ))}
+    </div>
+  </div>
+
+  <div className="relative z-10 text-center px-6">
+    <h3 className="text-4xl font-bold mb-6">O nas</h3>
+    <p className="text-lg max-w-3xl mx-auto">
+      WJW Projekt to firma specjalizująca się w opracowywaniu ekspertyz przeciwpożarowych,
+      dokumentacji technicznych oraz doradztwie w zakresie bezpieczeństwa pożarowego.
+    </p>
+  </div>
+
 </section>
+
  
 <section id="services" className="bg-gray-100 py-20 px-6">
   <h3 className="text-4xl font-bold mb-12 text-center text-gray-800">Nasze Usługi</h3>
@@ -131,16 +164,29 @@ export default function App() {
           {[
             {
               title: "Ekspertyzy przeciwpożarowe",
-              desc: "Dokumenty dostosowane do wymagań prawnych i technicznych.",
+              desc: "Sporządzamy kompleksowe ekspertyzy techniczne z zakresu ochrony przeciwpożarowej, obejmujące analizę warunków technicznych, identyfikację niezgodności oraz przygotowanie rozwiązań zamiennych zgodnych z obowiązującymi przepisami i normami. Każda ekspertyza jest opracowywana indywidualnie na podstawie charakterystyki obiektu.",
             },
             {
               title: "Doradztwo",
-              desc: "Wsparcie w procesie projektowania i realizacji inwestycji.",
+              desc: "Zapewniamy profesjonalne wsparcie na każdym etapie inwestycji – od koncepcji, przez projektowanie, aż po odbiory. Pomagamy w doborze odpowiednich rozwiązań przeciwpożarowych, interpretacji przepisów, a także w kontaktach z rzeczoznawcami oraz instytucjami nadzorującymi.",
             },
             {
               title: "Dokumentacje techniczne",
-              desc: "Szczegółowe opracowania zgodne z obowiązującymi normami.",
+              desc: "Opracowujemy dokumentacje niezbędne podczas realizacji inwestycji, takie jak instrukcje bezpieczeństwa pożarowego, operaty przeciwpożarowe, scenariusze pożarowe, analiza zagrożenia wybuchem oraz pełna dokumentacja projektowa z zakresu ochrony przeciwpożarowej.",
             },
+            {
+              title: "Scenariusze pożarowe",
+              desc: "Tworzymy szczegółowe scenariusze rozwoju pożaru, będące podstawą do projektowania systemów sygnalizacji pożarowej, oddymiania oraz sterowania urządzeniami przeciwpożarowymi. Nasze opracowania pozwalają na prawidłowe zaprogramowanie i weryfikację działania instalacji PPOŻ.",
+            },
+            {
+              title: "Instrukcje bezpieczeństwa pożarowego",
+              desc: "Przygotowujemy instrukcje wraz z aktualizacją planów graficznych, zgodnie z wymaganiami rozporządzeń. Dokument zawiera analizę zagrożeń, zasady ewakuacji, procedury postępowania, rozmieszczenie sprzętu oraz wytyczne dla użytkowników obiektu.",
+            },
+            {
+              title: "Ocena zagrożenia wybuchem",
+              desc: "Wykonujemy profesjonalne oceny ryzyka wybuchu dla obiektów przemysłowych i komercyjnych, obejmujące klasyfikację stref zagrożonych, dobór urządzeń Ex oraz analizę potencjalnych źródeł zapłonu. Dokumentacja jest zgodna z Dyrektywą ATEX.",
+            },
+            
           ].map((s, i) => (
             <Card key={i}>
               <h4 className="text-xl sm:text-2xl font-semibold mb-3 text-gray-800">
@@ -210,10 +256,45 @@ export default function App() {
       </section>
  
       {/* Footer */}
-      <footer className="bg-red-700 text-white text-center py-6 sm:py-8 mt-12 sm:mt-20 px-4">
-        <p className="text-sm sm:text-base">
-          &copy; {new Date().getFullYear()} WJW Projekt. Wszystkie prawa zastrzeżone.
-        </p>
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-3 gap-8">
+            <div>
+              <h4 className="text-xl font-bold text-white mb-4">WJW Projekt</h4>
+              <p className="text-gray-400">
+                Profesjonalne ekspertyzy i doradztwo w zakresie bezpieczeństwa pożarowego.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-xl font-bold text-white mb-4">Szybkie linki</h4>
+              <ul className="space-y-2">
+                {['home', 'about', 'services', 'contact'].map((item) => (
+                  <li key={item}>
+                    <a 
+                      href={`#${item}`}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      {item === 'home' ? 'Strona Główna' : 
+                       item === 'about' ? 'O nas' :
+                       item === 'services' ? 'Usługi' : 'Kontakt'}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xl font-bold text-white mb-4">Kontakt</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li>mail: kontakt@wjwprojekt.pl</li>
+                <li>nr telefonu: +48 123 456 789</li>
+                <li>adres siedziby: ul. Przykładowa 123, 00-000 Warszawa</li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
+            <p>&copy; {new Date().getFullYear()} WJW Projekt. Wszystkie prawa zastrzeżone.</p>
+          </div>
+        </div>
       </footer>
     </div>
   );

@@ -11,51 +11,59 @@ export default function Admin() {
   const [filterClient, setFilterClient] = useState("");
   const [filterAddress, setFilterAddress] = useState("");
   const [sortOption, setSortOption] = useState("default");
-
-
+  const [editingEkspertyzy, setEditingEkspertyzy] = useState({});
   
+  const [viewingMessage, setViewingMessage] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const filteredEkspertyzy = ekspertyzy.filter((e) => {
-    const statusMatch = filters.length === 0 || filters.includes(e.status);
-  
+    const ekspertyza = editingEkspertyzy[e.id] || e;
+    const statusMatch = filters.length === 0 || filters.includes(ekspertyza.status);
     const clientMatch =
       filterClient.trim() === "" ||
-      e.imie.toLowerCase().includes(filterClient.toLowerCase());
-  
+      ekspertyza.imie.toLowerCase().includes(filterClient.toLowerCase());
     const addressMatch =
       filterAddress.trim() === "" ||
-      e.adres.toLowerCase().includes(filterAddress.toLowerCase());
-  
+      ekspertyza.adres.toLowerCase().includes(filterAddress.toLowerCase());
     return statusMatch && clientMatch && addressMatch;
   });
-  
+
   const sortEkspertyzy = (data) => {
     let sorted = [...data];
-  
     switch (sortOption) {
       case "termin-asc":
-        sorted.sort((a, b) => new Date(a.termin) - new Date(b.termin));
+        sorted.sort((a, b) => {
+          const aTermin = new Date(editingEkspertyzy[a.id]?.termin || a.termin);
+          const bTermin = new Date(editingEkspertyzy[b.id]?.termin || b.termin);
+          return aTermin - bTermin;
+        });
         break;
-  
       case "termin-desc":
-        sorted.sort((a, b) => new Date(b.termin) - new Date(a.termin));
+        sorted.sort((a, b) => {
+          const aTermin = new Date(editingEkspertyzy[a.id]?.termin || a.termin);
+          const bTermin = new Date(editingEkspertyzy[b.id]?.termin || b.termin);
+          return bTermin - aTermin;
+        });
         break;
-  
       case "wycena-asc":
-        sorted.sort((a, b) => Number(a.wycena) - Number(b.wycena));
+        sorted.sort((a, b) => {
+          const aWycena = Number(editingEkspertyzy[a.id]?.wycena || a.wycena);
+          const bWycena = Number(editingEkspertyzy[b.id]?.wycena || b.wycena);
+          return aWycena - bWycena;
+        });
         break;
-  
       case "wycena-desc":
-        sorted.sort((a, b) => Number(b.wycena) - Number(a.wycena));
+        sorted.sort((a, b) => {
+          const aWycena = Number(editingEkspertyzy[a.id]?.wycena || a.wycena);
+          const bWycena = Number(editingEkspertyzy[b.id]?.wycena || b.wycena);
+          return bWycena - aWycena;
+        });
         break;
-  
       default:
         return data;
     }
-  
     return sorted;
   };
-  
 
   const toggleFilter = (value) => {
     setFilters((prev) =>
@@ -64,10 +72,7 @@ export default function Admin() {
         : [...prev, value]
     );
   };
-  
-  
-  
-  
+
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -86,10 +91,24 @@ export default function Admin() {
       setError("Błąd połączenia z serwerem");
     }
   };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     setLoggedIn(false);
+    setEditingEkspertyzy({});
   };
+
+  const openMessageModal = (message) => {
+    setViewingMessage(message);
+    setIsModalOpen(true);
+  };
+
+
+  const closeMessageModal = () => {
+    setIsModalOpen(false);
+    setViewingMessage(null);
+  };
+
   useEffect(() => {
     if (loggedIn) {
       const token = localStorage.getItem("token");
@@ -103,259 +122,515 @@ export default function Admin() {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((r) => r.json())
-        .then(setEkspertyzy);
+        .then((data) => {
+          setEkspertyzy(data);
+          const initialEditingState = {};
+          data.forEach(e => {
+            initialEditingState[e.id] = {
+              wycena: e.wycena,
+              status: e.status,
+              termin: e.termin
+            };
+          });
+          setEditingEkspertyzy(initialEditingState);
+        });
     }
   }, [loggedIn]);
 
-  const updateEkspertyza = async (id, status, wycena, termin) => {
+  const handleEkspertyzaChange = (id, field, value) => {
+    setEditingEkspertyzy(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value
+      }
+    }));
+  };
+
+  const updateEkspertyza = async (id) => {
+    const ekspertyza = editingEkspertyzy[id];
+    if (!ekspertyza) return;
+    
     const token = localStorage.getItem("token");
-    await fetch(`http://localhost:5000/api/ekspertyzy/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status, wycena, termin}),
-    });
-    alert("Zaktualizowano ekspertyzę!");
+    try {
+      const response = await fetch(`http://localhost:5000/api/ekspertyzy/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(ekspertyza),
+      });
+
+      if (response.ok) {
+        setEkspertyzy(prev => prev.map(e => 
+          e.id === id ? { ...e, ...ekspertyza } : e
+        ));
+        
+
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+        notification.textContent = 'Ekspertyza została zaktualizowana!';
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 3000);
+      } else {
+        alert("Błąd podczas aktualizacji ekspertyzy");
+      }
+    } catch (error) {
+      alert("Błąd połączenia z serwerem");
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "oczekuje":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "w trakcie":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "wykonane":
+        return "bg-green-100 text-green-800 border-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getEkspertyzaData = (ekspertyza) => {
+    const editedData = editingEkspertyzy[ekspertyza.id];
+    return {
+      wycena: editedData?.wycena !== undefined ? editedData.wycena : ekspertyza.wycena,
+      status: editedData?.status || ekspertyza.status,
+      termin: editedData?.termin || ekspertyza.termin,
+      imie: ekspertyza.imie,
+      mail: ekspertyza.mail,
+      adres: ekspertyza.adres
+    };
+  };
+
+
+  const formatMessageText = (text) => {
+    return text.split('\n').map((line, i) => (
+      <span key={i}>
+        {line}
+        <br />
+      </span>
+    ));
   };
 
   if (!loggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 w-[100vw]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4 w-[100vw]">
         <form
           onSubmit={handleLogin}
-          className="bg-white p-10 rounded-3xl shadow-lg w-full max-w-sm"
+          className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100"
         >
-          <h2 className="text-2xl font-bold text-center text-red-700 mb-6">
-            Panel administratora
-          </h2>
-          <input
-            type="text"
-            placeholder="Login"
-            className="border p-2 w-full rounded-lg mb-3"
-            onChange={(e) => setForm({ ...form, login: e.target.value })}
-          />
-          <input
-            type="password"
-            placeholder="Hasło"
-            className="border p-2 w-full rounded-lg mb-3"
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-          {error && <p className="text-red-600 text-center mb-2">{error}</p>}
-          <button
-            type="submit"
-            className="w-full bg-red-700 text-black py-2 rounded-lg hover:bg-red-800"
-          >
-            Zaloguj
-          </button>
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              Panel Administratora
+            </h2>
+            <p className="text-gray-600 text-sm">
+              Wprowadź dane logowania
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Login
+              </label>
+              <input
+                type="text"
+                placeholder="Wpisz login"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                onChange={(e) => setForm({ ...form, login: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Hasło
+              </label>
+              <input
+                type="password"
+                placeholder="Wpisz hasło"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-medium py-3 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-md hover:shadow-lg"
+            >
+              Zaloguj się
+            </button>
+          </div>
         </form>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 w-[100vw]">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8 w-[99.2vw]">
+      <div className="max-w-7xl mx-auto">
 
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-red-700">
-          Panel Administratora
-        </h1>
-        <button
-          onClick={handleLogout}
-          className="bg-red-700 text-black px-4 py-2 rounded-lg hover:bg-red-800 transition"
-        >
-          Wyloguj
-        </button>
-      </div>
-
-      <section className="mb-10">
-        <h2 className="text-2xl font-semibold mb-4">Wiadomości</h2>
-        <div className="bg-white shadow-md rounded-xl p-6 overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b font-semibold">
-                <th>Imię</th>
-                <th>Email</th>
-                <th>Adres</th>
-                <th>Wiadomość</th>
-                <th>Data</th>
-              </tr>
-            </thead>
-            <tbody>
-              {messages.map((m) => (
-                <tr key={m.id} className="border-b">
-                  <td>{m.imie}</td>
-                  <td>{m.mail}</td>
-                  <td>{m.adres}</td>
-                  <td>{m.wiadomosc}</td>
-                  <td>{new Date(m.data_wyslania).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-1">
+              Panel Administratora
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Zarządzaj wiadomościami i ekspertyzami
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="mt-4 md:mt-0 px-5 py-2.5 bg-white text-red-600 border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all duration-200 font-medium shadow-sm"
+          >
+            Wyloguj się
+          </button>
         </div>
-      </section>
 
 
-  <section>
-  {/* GÓRNY PANEL – FILTRY LEWO, SORTOWANIE PRAWO */}
-<div className="flex justify-between items-center mb-4">
-
-{/* PRZYCISK FILTROWANIA */}
-<button
-  onClick={() => setFiltersOpen(!filtersOpen)}
-  className="bg-gray-200 px-4 py-2 rounded-lg border hover:bg-gray-300"
->
-  {filtersOpen ? "Ukryj filtry ▲" : "Pokaż filtry ▼"}
-</button>
-
-{/* SORTOWANIE */}
-<div className="flex items-center gap-2">
-  <label className="font-semibold">Sortuj:</label>
-
-  <select
-    className="border rounded p-2"
-    value={sortOption}
-    onChange={(e) => setSortOption(e.target.value)}
-  >
-    <option value="default">Domyślne</option>
-    <option value="termin-asc">Termin ↑</option>
-    <option value="termin-desc">Termin ↓</option>
-    <option value="wycena-asc">Wycena ↑</option>
-    <option value="wycena-desc">Wycena ↓</option>
-  </select>
-</div>
-
-</div>
-
-
-{/* PANEL ROZWIJANY — FILTRY */}
-{filtersOpen && (
-<div className="mt-4 mb-6 p-4 bg-white rounded-xl shadow-md border">
-
-  <h3 className="font-semibold mb-2">Status:</h3>
-
-  <div className="flex gap-4 mb-4">
-    <label className="flex items-center gap-1">
-      <input
-        type="checkbox"
-        checked={filters.includes("oczekuje")}
-        onChange={() => toggleFilter("oczekuje")}
-      />
-      oczekuje
-    </label>
-
-    <label className="flex items-center gap-1">
-      <input
-        type="checkbox"
-        checked={filters.includes("w trakcie")}
-        onChange={() => toggleFilter("w trakcie")}
-      />
-      w trakcie
-    </label>
-
-    <label className="flex items-center gap-1">
-      <input
-        type="checkbox"
-        checked={filters.includes("wykonane")}
-        onChange={() => toggleFilter("wykonane")}
-      />
-      wykonane
-    </label>
-  </div>
-
-  <h3 className="font-semibold mb-2">Klient:</h3>
-  <input
-    type="text"
-    placeholder="Wpisz imię klienta..."
-    className="border p-2 w-full rounded-lg mb-4"
-    value={filterClient}
-    onChange={(e) => setFilterClient(e.target.value)}
-  />
-
-  <h3 className="font-semibold mb-2">Adres / Ulica:</h3>
-  <input
-    type="text"
-    placeholder="Wpisz ulicę..."
-    className="border p-2 w-full rounded-lg"
-    value={filterAddress}
-    onChange={(e) => setFilterAddress(e.target.value)}
-  />
-
-</div>
-)}
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Wiadomości od klientów
+            </h2>
+            <span className="bg-red-100 text-red-700 text-sm font-medium px-3 py-1 rounded-full">
+              {messages.length} wiadomości
+            </span>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Imię</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Email</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Adres</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Wiadomość</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Data wysłania</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Akcje</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {messages.map((m) => (
+                    <tr key={m.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-6">
+                        <div className="font-medium text-gray-900">{m.imie}</div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <a href={`mailto:${m.mail}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                          {m.mail}
+                        </a>
+                      </td>
+                      <td className="py-4 px-6 text-gray-700">{m.adres}</td>
+                      <td className="py-4 px-6">
+                        <div className="max-w-xs truncate" title={m.wiadomosc}>
+                          {m.wiadomosc}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-gray-600 text-sm">
+                        {new Date(m.data_wyslania).toLocaleString('pl-PL')}
+                      </td>
+                      <td className="py-4 px-6">
+                        <button
+                          onClick={() => openMessageModal(m)}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all text-sm font-medium"
+                        >
+                          Pełna treść
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {messages.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Brak wiadomości
+              </div>
+            )}
+          </div>
+        </section>
 
 
-
-  <div className="bg-white shadow-md rounded-xl p-6 overflow-x-auto">
-
-    <table className="w-full text-left">
-      <thead>
-        <tr className="border-b font-semibold">
-          <th>Klient</th>
-          <th>Email</th>
-          <th>Adres</th>
-          <th>Wycena</th>
-          <th>Status</th>
-          <th>Termin</th>
-          <th>Akcja</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {sortEkspertyzy(filteredEkspertyzy).map((e) => (
-          <tr key={e.id} className="border-b">
-            <td>{e.imie}</td>
-            <td>{e.mail}</td>
-            <td>{e.adres}</td>
-
-            <td>
-              <input
-                type="number"
-                defaultValue={e.wycena}
-                onChange={(ev) => (e.wycena = ev.target.value)}
-                className="border rounded p-1 w-24"
-              />
-            </td>
-
-            <td>
-              <select
-                defaultValue={e.status}
-                onChange={(ev) => (e.status = ev.target.value)}
-                className="border rounded p-1"
-              >
-                <option value="oczekuje">oczekuje</option>
-                <option value="w trakcie">w trakcie</option>
-                <option value="wykonane">wykonane</option>
-              </select>
-            </td>
-
-            <td>
-            <input
-              type="date"
-              defaultValue={e.termin ? e.termin.slice(0, 10) : ""}
-              onChange={(ev) => (e.termin = ev.target.value)}
-              className="border rounded p-1 w-32"
+        {isModalOpen && viewingMessage && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-40"
+              onClick={closeMessageModal}
             />
-            </td>
+            
 
-            <td>
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+
+                <div className="flex items-center justify-between p-6 border-b bg-gray-50">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800">
+                      Wiadomość od {viewingMessage.imie}
+                    </h3>
+                    <p className="text-gray-600 text-sm mt-1">
+                      Wysłano: {new Date(viewingMessage.data_wyslania).toLocaleString('pl-PL')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={closeMessageModal}
+                    className="text-gray-400 hover:text-gray-600 text-2xl p-2"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                  <div className="space-y-6">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Nadawca</p>
+                        <p className="font-medium text-gray-800">{viewingMessage.imie}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Email</p>
+                        <a 
+                          href={`mailto:${viewingMessage.mail}`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                        >
+                          {viewingMessage.mail}
+                        </a>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Adres</p>
+                        <p className="font-medium text-gray-800">{viewingMessage.adres}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Telefon</p>
+                        <p className="font-medium text-gray-800">
+                          {viewingMessage.telefon || "Nie podano"}
+                        </p>
+                      </div>
+                    </div>
+
+     
+                    <div>
+                      <p className="text-sm text-gray-500 mb-3">Treść wiadomości</p>
+                      <div className="bg-white border border-gray-200 rounded-lg p-5">
+                        <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                          {formatMessageText(viewingMessage.wiadomosc)}
+                        </div>
+                      </div>
+                    </div>
+
+
+                    {viewingMessage.typ && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-2">Typ zapytania</p>
+                        <div className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
+                          {viewingMessage.typ}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+
+                <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+                  <button
+                    onClick={closeMessageModal}
+                    className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+                  >
+                    Zamknij
+                  </button>
+                  <a
+                    href={`mailto:${viewingMessage.mail}?subject=Odpowiedź na zapytanie&body=Dzień dobry ${viewingMessage.imie},%0D%0A%0D%0ADziękujemy za kontakt.`}
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                  >
+                    Odpowiedz
+                  </a>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <section>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-1">
+                Ekspertyzy
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Liczba ekspertyz: <span className="font-semibold">{filteredEkspertyzy.length}</span>
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               <button
-                onClick={() => updateEkspertyza(e.id, e.status, e.wycena, e.termin)}
-                className="bg-red-600 text-black px-3 py-1 rounded-lg hover:bg-red-700"
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                className="flex items-center justify-center gap-2 bg-white border border-gray-300 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition font-medium"
               >
-                Zapisz
+                <span>Filtry i sortowanie</span>
+                <span className="text-gray-500">
+                  {filtersOpen ? "▲" : "▼"}
+                </span>
               </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
 
-    </table>
-  </div>
-</section>
+              <div className="flex items-center">
+                <label className="text-sm font-medium text-gray-700 mr-2 whitespace-nowrap">
+                  Sortuj według:
+                </label>
+                <select
+                  className="border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-white w-full"
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                >
+                  <option value="default">Domyślnie</option>
+                  <option value="termin-asc">Termin - rosnąco</option>
+                  <option value="termin-desc">Termin - malejąco</option>
+                  <option value="wycena-asc">Wycena - rosnąco</option>
+                  <option value="wycena-desc">Wycena - malejąco</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
+          {filtersOpen && (
+            <div className="mb-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">Filtrowanie</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Status</h4>
+                  <div className="space-y-2">
+                    {["oczekuje", "w trakcie", "wykonane"].map((status) => (
+                      <label key={status} className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filters.includes(status)}
+                          onChange={() => toggleFilter(status)}
+                          className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                        />
+                        <span className="text-gray-700 capitalize">{status}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Klient</h4>
+                  <input
+                    type="text"
+                    placeholder="Wyszukaj po imieniu..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                    value={filterClient}
+                    onChange={(e) => setFilterClient(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Adres / Ulica</h4>
+                  <input
+                    type="text"
+                    placeholder="Wyszukaj po adresie..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                    value={filterAddress}
+                    onChange={(e) => setFilterAddress(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Klient</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Email</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Adres</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Wycena</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Status</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Termin</th>
+                    <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Akcje</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {sortEkspertyzy(filteredEkspertyzy).map((ekspertyza) => {
+                    const ekspertyzaData = getEkspertyzaData(ekspertyza);
+                    return (
+                      <tr key={ekspertyza.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="font-medium text-gray-900">{ekspertyzaData.imie}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <a href={`mailto:${ekspertyzaData.mail}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                            {ekspertyzaData.mail}
+                          </a>
+                        </td>
+                        <td className="py-4 px-6 text-gray-700">{ekspertyzaData.adres}</td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">PLN</span>
+                            <input
+                              type="number"
+                              value={ekspertyzaData.wycena}
+                              onChange={(ev) => handleEkspertyzaChange(ekspertyza.id, 'wycena', ev.target.value)}
+                              className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                            />
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <select
+                            value={ekspertyzaData.status}
+                            onChange={(ev) => handleEkspertyzaChange(ekspertyza.id, 'status', ev.target.value)}
+                            className={`px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none font-medium capitalize ${getStatusColor(ekspertyzaData.status)}`}
+                          >
+                            <option value="oczekuje">Oczekuje</option>
+                            <option value="w trakcie">W trakcie</option>
+                            <option value="wykonane">Wykonane</option>
+                          </select>
+                        </td>
+                        <td className="py-4 px-6">
+                          <input
+                            type="date"
+                            value={ekspertyzaData.termin ? ekspertyzaData.termin.slice(0, 10) : ""}
+                            onChange={(ev) => handleEkspertyzaChange(ekspertyza.id, 'termin', ev.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none w-36"
+                          />
+                        </td>
+                        <td className="py-4 px-6">
+                          <button
+                            onClick={() => updateEkspertyza(ekspertyza.id)}
+                            className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-sm hover:shadow"
+                          >
+                            Zapisz
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filteredEkspertyzy.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Brak ekspertyz spełniających kryteria wyszukiwania
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

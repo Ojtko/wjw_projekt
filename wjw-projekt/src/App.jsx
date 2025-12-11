@@ -109,7 +109,7 @@ export default function App() {
       {/* Hero */}
       <section
         id="home"
-        className="bg-red-700 text-center py-20 sm:py-32 px-4 relative overflow-hidden"
+        className="bg-red-700 text-center py-0 sm:py-32 px-4 relative overflow-hidden"
       >
         <h2 className="text-3xl sm:text-5xl md:text-6xl text-white font-extrabold leading-tight max-w-3xl mx-auto">
           Ekspertyzy przeciwpożarowe dla Twojej inwestycji
@@ -125,16 +125,16 @@ export default function App() {
   <div className="absolute inset-0 overflow-hidden">
     <div className="flex w-[200%] carousel-track">
       {[
-        '/public/ppoz1.jpg',
-        '/public/ppoz2.jpg',
-        '/public/ppoz3.jpg',
-        '/public/ppoz4.jpg',
-        '/public/ppoz5.jpg',
-        '/public/ppoz1.jpg', 
-        '/public/ppoz2.jpg',
-        '/public/ppoz3.jpg',
-        '/public/ppoz4.jpg',
-        '/public/ppoz5.jpg'
+        '/ppoz1.jpg',
+        '/ppoz2.jpg',
+        '/ppoz3.jpg',
+        '/ppoz4.jpg',
+        '/ppoz5.jpg',
+        '/ppoz1.jpg', 
+        '/ppoz2.jpg',
+        '/ppoz3.jpg',
+        '/ppoz4.jpg',
+        '/ppoz5.jpg'
         
       ].map((src, i) => (
         <img

@@ -12,57 +12,89 @@ export default function Admin() {
   const [filterAddress, setFilterAddress] = useState("");
   const [sortOption, setSortOption] = useState("default");
   const [editingEkspertyzy, setEditingEkspertyzy] = useState({});
-  
   const [viewingMessage, setViewingMessage] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const filteredEkspertyzy = ekspertyzy.filter((e) => {
-    const ekspertyza = editingEkspertyzy[e.id] || e;
-    const statusMatch = filters.length === 0 || filters.includes(ekspertyza.status);
+  // Funkcja do pobrania aktualnych danych ekspertyzy (łączy oryginalne z edytowanymi)
+  const getCurrentEkspertyza = (ekspertyza) => {
+    if (!ekspertyza) return null;
+    
+    const editedData = editingEkspertyzy[ekspertyza.id] || {};
+    return {
+      ...ekspertyza,
+      wycena: editedData.wycena !== undefined ? editedData.wycena : ekspertyza.wycena,
+      status: editedData.status || ekspertyza.status,
+      termin: editedData.termin || ekspertyza.termin
+    };
+  };
+
+  const filteredEkspertyzy = (ekspertyzy || []).filter((e) => {
+    if (!e) return false;
+    
+    const currentEkspertyza = getCurrentEkspertyza(e);
+    if (!currentEkspertyza) return false;
+    
+    const statusMatch = filters.length === 0 || filters.includes(currentEkspertyza.status);
     const clientMatch =
       filterClient.trim() === "" ||
-      ekspertyza.imie.toLowerCase().includes(filterClient.toLowerCase());
+      (currentEkspertyza.imie || '').toLowerCase().includes(filterClient.toLowerCase());
     const addressMatch =
       filterAddress.trim() === "" ||
-      ekspertyza.adres.toLowerCase().includes(filterAddress.toLowerCase());
+      (currentEkspertyza.adres || '').toLowerCase().includes(filterAddress.toLowerCase());
+    
     return statusMatch && clientMatch && addressMatch;
   });
 
   const sortEkspertyzy = (data) => {
-    let sorted = [...data];
-    switch (sortOption) {
-      case "termin-asc":
-        sorted.sort((a, b) => {
-          const aTermin = new Date(editingEkspertyzy[a.id]?.termin || a.termin);
-          const bTermin = new Date(editingEkspertyzy[b.id]?.termin || b.termin);
-          return aTermin - bTermin;
-        });
-        break;
-      case "termin-desc":
-        sorted.sort((a, b) => {
-          const aTermin = new Date(editingEkspertyzy[a.id]?.termin || a.termin);
-          const bTermin = new Date(editingEkspertyzy[b.id]?.termin || b.termin);
-          return bTermin - aTermin;
-        });
-        break;
-      case "wycena-asc":
-        sorted.sort((a, b) => {
-          const aWycena = Number(editingEkspertyzy[a.id]?.wycena || a.wycena);
-          const bWycena = Number(editingEkspertyzy[b.id]?.wycena || b.wycena);
-          return aWycena - bWycena;
-        });
-        break;
-      case "wycena-desc":
-        sorted.sort((a, b) => {
-          const aWycena = Number(editingEkspertyzy[a.id]?.wycena || a.wycena);
-          const bWycena = Number(editingEkspertyzy[b.id]?.wycena || b.wycena);
-          return bWycena - aWycena;
-        });
-        break;
-      default:
-        return data;
+    if (!Array.isArray(data)) return [];
+    
+    try {
+      let sorted = [...data];
+      switch (sortOption) {
+        case "termin-asc":
+          sorted.sort((a, b) => {
+            const aCurrent = getCurrentEkspertyza(a);
+            const bCurrent = getCurrentEkspertyza(b);
+            const aTermin = aCurrent?.termin ? new Date(aCurrent.termin) : new Date(0);
+            const bTermin = bCurrent?.termin ? new Date(bCurrent.termin) : new Date(0);
+            return aTermin - bTermin;
+          });
+          break;
+        case "termin-desc":
+          sorted.sort((a, b) => {
+            const aCurrent = getCurrentEkspertyza(a);
+            const bCurrent = getCurrentEkspertyza(b);
+            const aTermin = aCurrent?.termin ? new Date(aCurrent.termin) : new Date(0);
+            const bTermin = bCurrent?.termin ? new Date(bCurrent.termin) : new Date(0);
+            return bTermin - aTermin;
+          });
+          break;
+        case "wycena-asc":
+          sorted.sort((a, b) => {
+            const aCurrent = getCurrentEkspertyza(a);
+            const bCurrent = getCurrentEkspertyza(b);
+            const aWycena = Number(aCurrent?.wycena || 0);
+            const bWycena = Number(bCurrent?.wycena || 0);
+            return aWycena - bWycena;
+          });
+          break;
+        case "wycena-desc":
+          sorted.sort((a, b) => {
+            const aCurrent = getCurrentEkspertyza(a);
+            const bCurrent = getCurrentEkspertyza(b);
+            const aWycena = Number(aCurrent?.wycena || 0);
+            const bWycena = Number(bCurrent?.wycena || 0);
+            return bWycena - aWycena;
+          });
+          break;
+        default:
+          return data;
+      }
+      return sorted.filter(item => item != null);
+    } catch (err) {
+      console.error('Błąd podczas sortowania:', err);
+      return data || [];
     }
-    return sorted;
   };
 
   const toggleFilter = (value) => {
@@ -103,7 +135,6 @@ export default function Admin() {
     setIsModalOpen(true);
   };
 
-
   const closeMessageModal = () => {
     setIsModalOpen(false);
     setViewingMessage(null);
@@ -112,28 +143,39 @@ export default function Admin() {
   useEffect(() => {
     if (loggedIn) {
       const token = localStorage.getItem("token");
-      fetch("http://localhost:5000/api/messages", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => r.json())
-        .then(setMessages);
-
-      fetch("http://localhost:5000/api/ekspertyzy", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          setEkspertyzy(data);
-          const initialEditingState = {};
-          data.forEach(e => {
-            initialEditingState[e.id] = {
-              wycena: e.wycena,
-              status: e.status,
-              termin: e.termin
-            };
-          });
-          setEditingEkspertyzy(initialEditingState);
-        });
+      
+      Promise.all([
+        fetch("http://localhost:5000/api/messages", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.json())
+          .then(data => Array.isArray(data) ? data : [])
+          .catch(() => []),
+        
+        fetch("http://localhost:5000/api/ekspertyzy", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            const safeData = Array.isArray(data) ? data : [];
+            setEkspertyzy(safeData);
+            const initialEditingState = {};
+            safeData.forEach(e => {
+              if (e && e.id) {
+                initialEditingState[e.id] = {
+                  wycena: e.wycena || '',
+                  status: e.status || 'oczekuje',
+                  termin: e.termin || ''
+                };
+              }
+            });
+            setEditingEkspertyzy(initialEditingState);
+            return safeData;
+          })
+          .catch(() => [])
+      ]).then(([messagesData]) => {
+        setMessages(messagesData);
+      });
     }
   }, [loggedIn]);
 
@@ -141,7 +183,7 @@ export default function Admin() {
     setEditingEkspertyzy(prev => ({
       ...prev,
       [id]: {
-        ...prev[id],
+        ...(prev[id] || {}),
         [field]: value
       }
     }));
@@ -164,9 +206,8 @@ export default function Admin() {
 
       if (response.ok) {
         setEkspertyzy(prev => prev.map(e => 
-          e.id === id ? { ...e, ...ekspertyza } : e
+          e?.id === id ? { ...e, ...ekspertyza } : e
         ));
-        
 
         const notification = document.createElement('div');
         notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50';
@@ -180,12 +221,14 @@ export default function Admin() {
         alert("Błąd podczas aktualizacji ekspertyzy");
       }
     } catch (error) {
+      console.error('Błąd:', error);
       alert("Błąd połączenia z serwerem");
     }
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    const safeStatus = status || 'oczekuje';
+    switch (safeStatus) {
       case "oczekuje":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "w trakcie":
@@ -197,20 +240,29 @@ export default function Admin() {
     }
   };
 
-  const getEkspertyzaData = (ekspertyza) => {
-    const editedData = editingEkspertyzy[ekspertyza.id];
+  const getDisplayData = (ekspertyza) => {
+    const current = getCurrentEkspertyza(ekspertyza);
+    if (!current) return {
+      wycena: '',
+      status: 'oczekuje',
+      termin: '',
+      imie: '',
+      mail: '',
+      adres: ''
+    };
+    
     return {
-      wycena: editedData?.wycena !== undefined ? editedData.wycena : ekspertyza.wycena,
-      status: editedData?.status || ekspertyza.status,
-      termin: editedData?.termin || ekspertyza.termin,
-      imie: ekspertyza.imie,
-      mail: ekspertyza.mail,
-      adres: ekspertyza.adres
+      wycena: current.wycena || '',
+      status: current.status || 'oczekuje',
+      termin: current.termin || '',
+      imie: current.imie || '',
+      mail: current.mail || '',
+      adres: current.adres || ''
     };
   };
 
-
   const formatMessageText = (text) => {
+    if (!text) return null;
     return text.split('\n').map((line, i) => (
       <span key={i}>
         {line}
@@ -306,7 +358,7 @@ export default function Admin() {
               Wiadomości od klientów
             </h2>
             <span className="bg-red-100 text-red-700 text-sm font-medium px-3 py-1 rounded-full">
-              {messages.length} wiadomości
+              {(messages || []).length} wiadomości
             </span>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -323,29 +375,30 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {messages.map((m) => (
-                    <tr key={m.id} className="hover:bg-gray-50 transition-colors">
+                  {(messages || []).map((m) => (
+                    <tr key={m?.id || Math.random()} className="hover:bg-gray-50 transition-colors">
                       <td className="py-4 px-6">
-                        <div className="font-medium text-gray-900">{m.imie}</div>
+                        <div className="font-medium text-gray-900">{m?.imie || ''}</div>
                       </td>
                       <td className="py-4 px-6">
-                        <a href={`mailto:${m.mail}`} className="text-blue-600 hover:text-blue-800 hover:underline">
-                          {m.mail}
+                        <a href={`mailto:${m?.mail || ''}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                          {m?.mail || ''}
                         </a>
                       </td>
-                      <td className="py-4 px-6 text-gray-700">{m.adres}</td>
+                      <td className="py-4 px-6 text-gray-700">{m?.adres || ''}</td>
                       <td className="py-4 px-6">
-                        <div className="max-w-xs truncate" title={m.wiadomosc}>
-                          {m.wiadomosc}
+                        <div className="max-w-xs truncate" title={m?.wiadomosc || ''}>
+                          {m?.wiadomosc || ''}
                         </div>
                       </td>
                       <td className="py-4 px-6 text-gray-600 text-sm">
-                        {new Date(m.data_wyslania).toLocaleString('pl-PL')}
+                        {m?.data_wyslania ? new Date(m.data_wyslania).toLocaleString('pl-PL') : ''}
                       </td>
                       <td className="py-4 px-6">
                         <button
-                          onClick={() => openMessageModal(m)}
+                          onClick={() => m && openMessageModal(m)}
                           className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all text-sm font-medium"
+                          disabled={!m}
                         >
                           Pełna treść
                         </button>
@@ -355,7 +408,7 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
-            {messages.length === 0 && (
+            {(messages || []).length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 Brak wiadomości
               </div>
@@ -378,10 +431,10 @@ export default function Admin() {
                 <div className="flex items-center justify-between p-6 border-b bg-gray-50">
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800">
-                      Wiadomość od {viewingMessage.imie}
+                      Wiadomość od {viewingMessage?.imie || ''}
                     </h3>
                     <p className="text-gray-600 text-sm mt-1">
-                      Wysłano: {new Date(viewingMessage.data_wyslania).toLocaleString('pl-PL')}
+                      Wysłano: {viewingMessage?.data_wyslania ? new Date(viewingMessage.data_wyslania).toLocaleString('pl-PL') : ''}
                     </p>
                   </div>
                   <button
@@ -398,25 +451,25 @@ export default function Admin() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                       <div>
                         <p className="text-sm text-gray-500 mb-1">Nadawca</p>
-                        <p className="font-medium text-gray-800">{viewingMessage.imie}</p>
+                        <p className="font-medium text-gray-800">{viewingMessage?.imie || ''}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 mb-1">Email</p>
                         <a 
-                          href={`mailto:${viewingMessage.mail}`}
+                          href={`mailto:${viewingMessage?.mail || ''}`}
                           className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
                         >
-                          {viewingMessage.mail}
+                          {viewingMessage?.mail || ''}
                         </a>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 mb-1">Adres</p>
-                        <p className="font-medium text-gray-800">{viewingMessage.adres}</p>
+                        <p className="font-medium text-gray-800">{viewingMessage?.adres || ''}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 mb-1">Telefon</p>
                         <p className="font-medium text-gray-800">
-                          {viewingMessage.telefon || "Nie podano"}
+                          {viewingMessage?.telefon || "Nie podano"}
                         </p>
                       </div>
                     </div>
@@ -426,13 +479,13 @@ export default function Admin() {
                       <p className="text-sm text-gray-500 mb-3">Treść wiadomości</p>
                       <div className="bg-white border border-gray-200 rounded-lg p-5">
                         <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                          {formatMessageText(viewingMessage.wiadomosc)}
+                          {formatMessageText(viewingMessage?.wiadomosc)}
                         </div>
                       </div>
                     </div>
 
 
-                    {viewingMessage.typ && (
+                    {viewingMessage?.typ && (
                       <div>
                         <p className="text-sm text-gray-500 mb-2">Typ zapytania</p>
                         <div className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
@@ -452,7 +505,7 @@ export default function Admin() {
                     Zamknij
                   </button>
                   <a
-                    href={`mailto:${viewingMessage.mail}?subject=Odpowiedź na zapytanie&body=Dzień dobry ${viewingMessage.imie},%0D%0A%0D%0ADziękujemy za kontakt.`}
+                    href={`mailto:${viewingMessage?.mail || ''}?subject=Odpowiedź na zapytanie&body=Dzień dobry ${viewingMessage?.imie || ''},%0D%0A%0D%0ADziękujemy za kontakt.`}
                     className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
                   >
                     Odpowiedz
@@ -479,7 +532,7 @@ export default function Admin() {
                 onClick={() => setFiltersOpen(!filtersOpen)}
                 className="flex items-center justify-center gap-2 bg-white border border-gray-300 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition font-medium"
               >
-                <span>Filtry i sortowanie</span>
+                <span>Filtrowanie</span>
                 <span className="text-gray-500">
                   {filtersOpen ? "▲" : "▼"}
                 </span>
@@ -567,24 +620,26 @@ export default function Admin() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {sortEkspertyzy(filteredEkspertyzy).map((ekspertyza) => {
-                    const ekspertyzaData = getEkspertyzaData(ekspertyza);
+                    if (!ekspertyza) return null;
+                    
+                    const displayData = getDisplayData(ekspertyza);
                     return (
-                      <tr key={ekspertyza.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={ekspertyza.id || Math.random()} className="hover:bg-gray-50 transition-colors">
                         <td className="py-4 px-6">
-                          <div className="font-medium text-gray-900">{ekspertyzaData.imie}</div>
+                          <div className="font-medium text-gray-900">{displayData.imie}</div>
                         </td>
                         <td className="py-4 px-6">
-                          <a href={`mailto:${ekspertyzaData.mail}`} className="text-blue-600 hover:text-blue-800 hover:underline">
-                            {ekspertyzaData.mail}
+                          <a href={`mailto:${displayData.mail}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                            {displayData.mail}
                           </a>
                         </td>
-                        <td className="py-4 px-6 text-gray-700">{ekspertyzaData.adres}</td>
+                        <td className="py-4 px-6 text-gray-700">{displayData.adres}</td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <span className="text-gray-500">PLN</span>
                             <input
                               type="number"
-                              value={ekspertyzaData.wycena}
+                              value={displayData.wycena}
                               onChange={(ev) => handleEkspertyzaChange(ekspertyza.id, 'wycena', ev.target.value)}
                               className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                             />
@@ -592,9 +647,9 @@ export default function Admin() {
                         </td>
                         <td className="py-4 px-6">
                           <select
-                            value={ekspertyzaData.status}
+                            value={displayData.status}
                             onChange={(ev) => handleEkspertyzaChange(ekspertyza.id, 'status', ev.target.value)}
-                            className={`px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none font-medium capitalize ${getStatusColor(ekspertyzaData.status)}`}
+                            className={`px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none font-medium capitalize ${getStatusColor(displayData.status)}`}
                           >
                             <option value="oczekuje">Oczekuje</option>
                             <option value="w trakcie">W trakcie</option>
@@ -604,7 +659,7 @@ export default function Admin() {
                         <td className="py-4 px-6">
                           <input
                             type="date"
-                            value={ekspertyzaData.termin ? ekspertyzaData.termin.slice(0, 10) : ""}
+                            value={displayData.termin ? displayData.termin.slice(0, 10) : ""}
                             onChange={(ev) => handleEkspertyzaChange(ekspertyza.id, 'termin', ev.target.value)}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none w-36"
                           />
@@ -625,7 +680,7 @@ export default function Admin() {
             </div>
             {filteredEkspertyzy.length === 0 && (
               <div className="text-center py-12 text-gray-500">
-                Brak ekspertyz spełniających kryteria wyszukiwania
+                {ekspertyzy.length === 0 ? 'Brak ekspertyz' : 'Brak ekspertyz spełniających kryteria wyszukiwania'}
               </div>
             )}
           </div>
